@@ -510,6 +510,7 @@ class CanvasScraper:
         if links:
             self._mkd(os.path.join(self.path, "files"))
         for link in links:
+            print(link)
             href = link.get("href")
             title = link.get("title")
             if not title:
@@ -525,7 +526,8 @@ class CanvasScraper:
                 self.logger.warning("Page has been visited before, skipping")
                 continue
             self.visited_page_links.append(href)
-            if link.get("class") and "instructure_file_link" in link["class"] and "canvas" in href:
+            # canvas_url should be specified like: asdf.instructure.com
+            if link.get("class") and "instructure_file_link" in link["class"] and self.base_url in href:
                 # This is necessary because files don't always show up
                 # under the files section of a course for some reason
                 self.logger.info(

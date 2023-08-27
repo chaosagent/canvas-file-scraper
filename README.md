@@ -15,6 +15,8 @@ If you use [pipenv](https://github.com/pypa/pipenv) you can just run `pipenv ins
 python canvas-scraper.py <CANVAS_API_KEY> -u <yourschool.instructure.com> -m
 ```
 
+`canvas_url` should be specified like: asdf.instructure.com
+
 For info on how to get an API key please refer to the [Canvas Dev course](https://canvas.instructure.com/courses/785215/pages/getting-started-with-the-api)
 
 To get courses from past terms, save the html file of the course list page from your browser to `course_list.html` in this folder and then run:
