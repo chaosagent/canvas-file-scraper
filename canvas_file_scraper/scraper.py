@@ -513,9 +513,9 @@ class CanvasScraper:
             href = link.get("href")
             title = link.get("title")
             if not title:
-                title = link.text
+                title = link.get("text")
             if not title:
-                title = link.href
+                title = link.get("href")
             if not href:
                 self.logger.warning(f"Link not found for title {title}")
                 continue
@@ -679,10 +679,10 @@ class CanvasScraper:
                 f.writelines(md(src))
 
     def _should_write(self, path):
-        if os.path.isfile(path) and self.overwrite is "no":
+        if os.path.isfile(path) and self.overwrite == "no":
             self.logger.debug(f"Skipping file {path}")
             return False
-        elif (self.overwrite is "ask" and
+        elif (self.overwrite == "ask" and
                 input(f"{path} already exists, overwrite? (y/n)") != "y"):
             return False
         # Ensure folder exists before writing
