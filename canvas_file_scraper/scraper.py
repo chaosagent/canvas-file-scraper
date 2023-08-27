@@ -11,7 +11,7 @@ import urllib
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from canvasapi import Canvas
-from canvasapi.exceptions import Unauthorized, ResourceDoesNotExist
+from canvasapi.exceptions import Unauthorized, ResourceDoesNotExist, Forbidden
 
 from canvasapi.canvas_object import CanvasObject
 from canvasapi.file import File
@@ -59,7 +59,10 @@ class CanvasScraper:
         self._ids = []
 
     def scrape(self):
-        courses = self.user.get_courses()
+        courses = list(self.user.get_courses(enrollment_state="completed"))
+        if os.path.exists('course_list.txt'):
+            courses += [self._canvas.get_course(x) for x in open('course_list.txt').read().strip().split('\n') if not any(int(c.id) == int(x) for c in courses)]
+        print('\n'.join(c.course_code for c in courses))
         for c in courses:
             try:
                 print(c)
@@ -83,8 +86,8 @@ class CanvasScraper:
                 self.logger.info(external_tools)
                 if external_tools:
                     import pdb
-                    pdb.set_trace()
-            except (Unauthorized, ResourceDoesNotExist) as e:
+                    #pdb.set_trace()
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"External tools not accesible")
 
@@ -97,7 +100,7 @@ class CanvasScraper:
                         self.handle_assignment(a)
                     finally:
                         self.pop()
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Assignments not accesible")
             finally:
@@ -112,7 +115,7 @@ class CanvasScraper:
                         self.handle_page(p)
                     finally:
                         self.pop()
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Pages not accesible")
             finally:
@@ -126,7 +129,7 @@ class CanvasScraper:
                 if self._dl_page(fp, fp_path) and self.markdown:
                     self._dl_page_data(fp_path, course._requester)
                     self._markdownify(fp_path, fp_md_path)
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Front page not accesible")
 
@@ -134,7 +137,7 @@ class CanvasScraper:
                 modules = course.get_modules()
                 for m in modules:
                     self.recurse_module(m)
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Modules not accesible")
 
@@ -142,7 +145,7 @@ class CanvasScraper:
                 groups = course.get_groups()
                 for g in groups:
                     self.recurse_group(g)
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Groups not accesible")
 
@@ -174,7 +177,7 @@ class CanvasScraper:
                 folders = obj.get_folders()
                 for f in folders:
                     self.recurse_folder(f)
-            except Unauthorized:
+            except (Forbidden, Unauthorized) as e:
                 self.logger.warning(f"Files not accesible")
         finally:
             self.pop()
@@ -193,8 +196,8 @@ class CanvasScraper:
                         self.logger.warning(
                             f"Media '{m.title}' type {m.media_type} is unsupported")
                         import pdb
-                        pdb.set_trace()
-            except (Unauthorized, ResourceDoesNotExist) as e:
+                        #pdb.set_trace()
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(e)
                 self.logger.warning(f"Media objects not accesible")
         finally:
@@ -222,10 +225,10 @@ class CanvasScraper:
                         try:
                             f.download(f_path)
                             self.logger.info(f"{f_path} downloaded")
-                        except (Unauthorized, ResourceDoesNotExist) as e:
+                        except (Forbbidden, Unauthorized, ResourceDoesNotExist) as e:
                             self.logger.warning(f"file not accesible")
                             self.logger.warning(str(e))
-            except (Unauthorized, ResourceDoesNotExist) as e:
+            except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                 self.logger.warning(f"folder not accesible")
                 self.logger.warning(str(e))
         finally:
@@ -268,7 +271,8 @@ class CanvasScraper:
             else:
                 self.logger.warning(f"Unsupported type {item.type}")
                 import pdb
-                pdb.set_trace()
+                if item.type not in ['Discussion'] and False:
+                    pdb.set_trace()
         finally:
             self.pop()
 
@@ -370,8 +374,8 @@ class CanvasScraper:
             try:
                 attachments = submission.attachments
                 for a in attachments:
-                    f_path = os.path.join(self.path, a["filename"])
-                    url = a["url"]
+                    f_path = os.path.join(self.path, a.filename)
+                    url = a.url
                     self._dl(url, f_path)
             except AttributeError:
                 self.logger.warning("No attachments found")
@@ -479,7 +483,7 @@ class CanvasScraper:
             except Exception as e:
                 self.logger.error("file download failed")
                 import pdb
-                pdb.set_trace()
+                #pdb.set_trace()
                 self.logger.error(e)
 
     def _dl_page(self, page, path):
@@ -527,7 +531,7 @@ class CanvasScraper:
                 try:
                     self._dl_canvas_file(
                         href, os.path.join(self.path, "files"), requester)
-                except (Unauthorized, ResourceDoesNotExist) as e:
+                except (Forbidden, Unauthorized, ResourceDoesNotExist) as e:
                     self.logger.error("Could not download file")
             elif href.startswith("mailto"):
                 self.logger.info("mailto link detected, saving email")
