@@ -514,6 +514,8 @@ class CanvasScraper:
             title = link.get("title")
             if not title:
                 title = link.text
+            if not title:
+                title = link.href
             if not href:
                 self.logger.warning(f"Link not found for title {title}")
                 continue
